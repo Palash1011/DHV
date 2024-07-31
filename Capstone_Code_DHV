@@ -1,0 +1,75 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+df=pd.read_csv(r"C:\Users\palas\OneDrive\Documents\QPDS\BigMart Sales Data Prediction\train.csv")
+df1=pd.read_csv(r"C:\Users\palas\OneDrive\Documents\QPDS\BigMart Sales Data Prediction\test.csv")
+print(df.shape)
+print(df1.shape)
+print(df.head())
+print(df1.head())
+print(df.describe())
+print(df1.describe())
+print(df.info())
+print(df1.info())
+df=df.drop('Item_Identifier',axis=1)
+df1=df1.drop('Item_Identifier',axis=1)
+df=df.drop('Outlet_Identifier',axis=1)
+df1=df1.drop('Outlet_Identifier',axis=1)
+df=df.drop('Outlet_Establishment_Year',axis=1)
+print(df.isnull().sum())
+print(df1.isnull().sum())
+plt.figure(figsize=(6,4))
+sns.heatmap(df.isnull(),yticklabels=False,cbar=False,cmap='viridis')
+plt.figure(figsize=(6,4))
+sns.heatmap(df1.isnull(),yticklabels=False,cbar=False,cmap='viridis')
+df['Item_Weight'].unique()
+df1['Item_Weight'].unique()
+df.replace({'Item_Fat_Content': {'low fat':'Low Fat','LF':'Low Fat','reg':'Regular'}},inplace=True)
+df['Item_Fat_Content'].value_counts()
+from sklearn.preprocessing import LabelEncoder
+le=LabelEncoder()
+df['Item_Fat_Content']=le.fit_transform(df['Item_Fat_Content'])
+df['Item_Type']=le.fit_transform(df['Item_Type'])
+df['Outlet_Size']=le.fit_transform(df['Outlet_Size'])
+df['Outlet_Location_Type']=le.fit_transform(df['Outlet_Location_Type'])
+df['Outlet_Type']=le.fit_transform(df['Outlet_Type'])
+feature_scale=[feature for feature in df.columns if feature not in ["Item_Identifier","Outlet_Identifier"]]
+from sklearn.preprocessing import StandardScaler
+scaler=StandardScaler()
+scaler.fit(df[feature_scale])
+from sklearn.linear_model import Ridge
+from sklearn.feature_selection import SelectFromModel
+pd.pandas.set_option('display.max_columns', None)
+x_train=df.drop(['Item_Outlet_Sales'],axis=1)
+y_train=df['Item_Outlet_Sales']
+feature_sel_model = SelectFromModel(Ridge(alpha=0.1, random_state=0))
+feature_sel_model.fit(x_train, y_train)
+selected_feat = x_train.columns[(feature_sel_model.get_support())]
+print('total features: {}'.format((x_train.shape[1])))
+print('selected features: {}'.format(len(selected_feat)))
+print('features with coefficients shrank to zero: {}'.format(np.sum(feature_sel_model.estimator_.coef_ == 0)))
+x_train=x_train[selected_feat]
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(df, df['Item_Outlet_Sales'], test_size=0.25, random_state=0)
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+lin_reg = LinearRegression()
+lin_reg.fit(x_train, y_train)
+y_pred = lin_reg.predict(x_test)
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+Scaler=StandardScaler()
+x_test_scaled=Scaler.fit_transform(x_test.values.reshape(-1, 1))
+Scaler.fit(x_train)
+x_train_scaled=Scaler.fit_transform(x_train)
+x_test_scaled=Scaler.fit_transform(x_test.values.reshape(-1, 1))
+model = DecisionTreeRegressor(random_state=2)
+model.fit(x_train, y_train)
+y_pred = pd.DataFrame(model.predict(x_test))
+print("R2 score", metrics.r2_score(y_test, y_pred))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+print("Accuracy : ",model.score(x_test,y_test))
+print("Accuracy : ",lin_reg.score(x_test,y_test))
